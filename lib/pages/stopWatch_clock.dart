@@ -112,7 +112,7 @@ class _TimerScreenState extends State<TimerScreen> {
 
         return Container(
           height: 250,
-          color: Color(0xFF2D2F41),
+          color: Colors.white,
           child: Column(
             children: [
               Expanded(
@@ -156,7 +156,7 @@ class _TimerScreenState extends State<TimerScreen> {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      
+
       child: Scaffold(
 
         backgroundColor: Color(0xFF2D2F41),
@@ -183,7 +183,7 @@ class _TimerScreenState extends State<TimerScreen> {
                   ),
                 ),
                 NavigationButton(
-                  image: 'assets/stopwatch_icon.png',
+                  image: 'assets/timer_icon.png',
                   label: 'StopWatch',
                   onPressed: () => Navigator.push(
                     context,
@@ -228,15 +228,15 @@ class _TimerScreenState extends State<TimerScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+
                         ElevatedButton(
                           onPressed: _isRunning ? null : _startTimer,
                           child: Text('Bắt đầu', style: TextStyle(color: Colors.white)),
                           style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
                         ),
-                        SizedBox(width: 20),
                         ElevatedButton(
                           onPressed: _isRunning ? _pauseTimer : null,
-                          child: Text('Tạm dừng', style: TextStyle(color: Colors.white)),
+                          child: Text('STOP', style: TextStyle(color: Colors.white)),
                           style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
                         ),
                       ],

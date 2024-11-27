@@ -3,19 +3,30 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'stopWatch_clock.dart';
+import '../provider/provider.dart';
+import 'package:provider/provider.dart';
 
 class Alarm {
   DateTime time;
   bool isEnabled;
+  String note; // New field for note
 
-  Alarm(this.time, this.isEnabled);
+  Alarm(this.time, this.isEnabled, {this.note = ''}); // Note is optional, default is empty string
 
-  Map<String, dynamic> toJson() => {'time': time.toIso8601String(), 'isEnabled': isEnabled};
+  Map<String, dynamic> toJson() => {
+    'time': time.toIso8601String(),
+    'isEnabled': isEnabled,
+    'note': note, // Include note in the JSON representation
+  };
 
   static Alarm fromJson(Map<String, dynamic> json) =>
-      Alarm(DateTime.parse(json['time']), json['isEnabled']);
+      Alarm(
+        DateTime.parse(json['time']),
+        json['isEnabled'],
+        note: json['note'] ?? '', // Handle note
+      );
 }
-
 class AlarmScreen extends StatefulWidget {
   @override
   _AlarmScreenState createState() => _AlarmScreenState();
@@ -58,7 +69,6 @@ class _AlarmScreenState extends State<AlarmScreen> {
     final alarmData = _alarmTimes.map((alarm) => alarm.toJson()).toList();
     await prefs.setString('alarm_times', jsonEncode(alarmData));
   }
-
   void _startCheckingAlarm() {
     _timer = Timer.periodic(Duration(milliseconds: 500), (timer) {
       final now = DateTime.now();
@@ -105,6 +115,7 @@ class _AlarmScreenState extends State<AlarmScreen> {
     );
   }
 
+
   Future<void> _addAlarm() async {
     final time = await showTimePicker(
       context: context,
@@ -114,18 +125,60 @@ class _AlarmScreenState extends State<AlarmScreen> {
       final now = DateTime.now();
       final alarmTime = DateTime(now.year, now.month, now.day, time.hour, time.minute);
 
-      if (!_alarmTimes.any((alarm) => alarm.time == alarmTime)) {
-        setState(() {
-          _alarmTimes.add(Alarm(alarmTime, true));
-          _alarmTimes.sort((a, b) => a.time.compareTo(b.time));
-        });
-        await _saveAlarmTimes();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Khung giờ này đã được thêm trước đó!')),
-        );
+      // Show a dialog for adding a note
+      String? note = await _showNoteDialog();
+
+      if (note != null && note.isNotEmpty) {
+        if (!_alarmTimes.any((alarm) => alarm.time == alarmTime)) {
+          setState(() {
+            _alarmTimes.add(Alarm(alarmTime, true, note: note));
+            _alarmTimes.sort((a, b) => a.time.compareTo(b.time));
+          });
+          await _saveAlarmTimes();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Khung giờ này đã được thêm trước đó!')),
+          );
+        }
       }
     }
+  }
+
+  Future<String?> _showNoteDialog() async {
+    TextEditingController _controller = TextEditingController();
+
+    return await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Color(0xFF2D2F41),
+          title: Text(
+            'Thêm ghi chú',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: TextField(
+            controller: _controller,
+            style: TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Nhập ghi chú cho báo thức',
+              hintStyle: TextStyle(color: Colors.grey),
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(_controller.text);
+              },
+              child: Text(
+                'Lưu',
+                style: TextStyle(color: Colors.blue),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _removeAlarm(Alarm alarm) async {
@@ -227,6 +280,37 @@ class _AlarmScreenState extends State<AlarmScreen> {
                     ),
                   ),
                 ),
+                Container(
+
+                  padding: EdgeInsets.symmetric(vertical: 16.0),
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => TimerScreen()),
+                      );
+
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF2D2F41)),
+                    child: Column(
+                      children: [
+                        Image.asset(
+                          'assets/stopwatch_icon.png',
+                          scale: 1.3,
+                        ),
+                        SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Stop Watch',
+                            style: TextStyle(color: Colors.white, fontSize: 14),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
               ],
             ),
             VerticalDivider(
@@ -235,6 +319,16 @@ class _AlarmScreenState extends State<AlarmScreen> {
             ),
             Expanded(
               child: Container(
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    fit: BoxFit.fill,
+                    // Chọn ảnh nền phù hợp với chế độ sáng/tối
+                    image: AssetImage(
+                      Provider.of<mode>(context).lightModeEnable? "assets/light_mode.png" // Chế độ sáng
+                          : "assets/dark_mode.png", // Chế độ tối
+                    ),
+                  ),
+                ),
                 padding: EdgeInsets.symmetric(horizontal: 32, vertical: 32),
                 alignment: Alignment.center,
                 child: Column(
@@ -244,13 +338,25 @@ class _AlarmScreenState extends State<AlarmScreen> {
                       flex: 1,
                       child: Align(
                         alignment: Alignment.center,
-                        child: Text(
-                          "Alarm",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 28,
-                          ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Alarm",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 28,
+                              ),
+                            ),
+                            Switch(
+                              value: Provider.of<mode>(context).lightModeEnable,
+                              onChanged: (value) {
+                                Provider.of<mode>(context, listen: false)
+                                    .chaneMode();
+                              },
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -324,57 +430,92 @@ class _AlarmScreenState extends State<AlarmScreen> {
                               itemCount: _alarmTimes.length,
                               itemBuilder: (context, index) {
                                 final alarm = _alarmTimes[index];
-                                return Container(
-                                  margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                                  padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[850], // Màu nền khung
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: Colors.blueAccent, // Màu đường viền
-                                      width: 2,
+                                return
+                                   Container(
+                                    margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[850],
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.blueAccent,
+                                        width: 2,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black54,
+                                          offset: Offset(4, 4),
+                                          blurRadius: 8,
+                                          spreadRadius: 2,
+                                        ),
+                                      ],
                                     ),
-                                    boxShadow:[
-                                      BoxShadow(
-                                        color: Colors.black54, // Màu bóng (đen mờ)
-                                        offset: Offset(4, 4),  // Độ dịch chuyển của bóng (x, y)
-                                        blurRadius: 8,         // Độ mờ của bóng
-                                        spreadRadius: 2,
-                                      ),
-                                    ]
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        '${alarm.time.hour}:${alarm.time.minute.toString().padLeft(2, '0')}',
-                                        style: TextStyle(color: Colors.white, fontSize: 18),
-                                      ),
-                                      Row(
+                                    child:
+                                    Container(
+                                      child: Row(
+
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Switch(
-                                            value: alarm.isEnabled,
-                                            onChanged: (value) {
-                                              setState(() {
-                                                alarm.isEnabled = value;
-                                              });
-                                              _saveAlarmTimes();
-                                            },
-                                            activeColor: Colors.grey, // Màu công tắc bật
-                                            activeTrackColor: Colors.yellow,
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                '${alarm.time.hour}:${alarm.time.minute.toString().padLeft(2, '0')}',
+                                                style: TextStyle(color: Colors.white, fontSize: 18),
+                                              ),
+                                              if (alarm.note.isNotEmpty) // Show the note if it's not empty
+                                                Padding(
+                                                  padding: const EdgeInsets.only(top: 8.0),
+                                                  child: Text(
+                                                    alarm.note,
+                                                    style: TextStyle(color: Colors.white, fontSize: 14),
+                                                  ),
+                                                ),
+                                            ],
                                           ),
-                                          IconButton(
-                                            icon: Icon(Icons.delete, color: Colors.red),
-                                            onPressed: () => _confirmDelete(alarm), // Hộp thoại xác nhận
+                                          SizedBox(width: 25,),
+
+                                          Container(
+                                            // margin: EdgeInsets.only(left: 2.0),
+                                            child: Expanded(
+                                              child: Row(
+                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Expanded(
+                                                    child: Switch(
+                                                      value: alarm.isEnabled,
+                                                      onChanged: (value) {
+                                                        setState(() {
+                                                          alarm.isEnabled = value;
+                                                        });
+                                                        _saveAlarmTimes();
+                                                      },
+                                                      activeColor: Colors.grey,
+                                                      activeTrackColor: Colors.yellow,
+                                                    ),
+                                                  ),
+                                                  SizedBox(width: 9,),
+
+                                                  Expanded(
+                                                    child: IconButton(
+                                                      icon: Icon(Icons.delete, color: Colors.red),
+                                                      onPressed: () => _confirmDelete(alarm),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
                                           ),
                                         ],
                                       ),
-                                    ],
-                                  ),
-                                );
+                                    ),
+                                  );
+
                               },
                             ),
-                          ),
+                          )
+
 
                         ],
                       ),

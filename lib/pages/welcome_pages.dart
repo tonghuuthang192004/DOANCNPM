@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'homepage.dart';
 class HomeWelcome extends StatelessWidget {
+
   const HomeWelcome({super.key});
 
   @override
@@ -40,7 +41,7 @@ class HomeWelcome extends StatelessWidget {
               alignment: Alignment.bottomCenter,
               child: Container(
                 width: MediaQuery.of(context).size.width,
-                
+
                 height:MediaQuery.of(context).size.height/2.666,
                 decoration: BoxDecoration(
                   color: Color(0xFF674AEF)
@@ -87,7 +88,7 @@ class HomeWelcome extends StatelessWidget {
                         fontSize: 20,color: Colors.black38.withOpacity(0.6)
                       ),),
                   ),
-                   SizedBox(height: 40),
+                    SizedBox(height: 20),
                   Material(
                     color: Color(0xFF674AEF),
                     borderRadius: BorderRadius.circular(10),
@@ -96,6 +97,7 @@ class HomeWelcome extends StatelessWidget {
                         Navigator.push(context,MaterialPageRoute(builder: (context)=>homepages())
                         );
                       },
+
                       child:Container(
                         padding:EdgeInsets.symmetric(vertical: 8.0,horizontal: 80),
                         child: Text("GET START",style: TextStyle(
